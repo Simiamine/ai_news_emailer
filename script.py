@@ -1,3 +1,4 @@
+from flask import Flask, jsonify
 import os
 import requests
 import smtplib
@@ -5,6 +6,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import schedule
 import time
+from threading import Thread
+
+app = Flask(__name__)
 
 def get_ai_news(api_key):
     try:
@@ -53,12 +57,23 @@ def job():
     formatted_articles = format_articles(articles)
     send_email("Weekly AI News", formatted_articles, to_email, from_email, password)
 
-# Exécuter la tâche immédiatement pour tester
-job()
+@app.route('/')
+def index():
+    return jsonify({"status": "Application is running!"})
 
-# Planification pour une fois par semaine
-schedule.every().sunday.at("10:00").do(job)
+def run_scheduler():
+    # Exécuter la tâche immédiatement pour tester
+    job()
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+    # Planification pour une fois par semaine
+    schedule.every().sunday.at("10:00").do(job)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+if __name__ == "__main__":
+    # Lancer le planificateur dans un thread séparé
+    Thread(target=run_scheduler).start()
+    # Démarrer le serveur Flask
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8080)))
